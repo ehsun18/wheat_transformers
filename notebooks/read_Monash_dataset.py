@@ -18,12 +18,25 @@ import os
 import pandas as pd
 
 # %%
+cond_ = False
+a = 1
+counter = 0
+while a > 0.5:
+    a *= (365-counter)/365
+    counter+=1
+
+# %%
+
+# %%
+
+# %%
 os.getcwd()
 
 # %%
 sys.path.append("./../mv_transformer/src")
 import datasets.utils as datasets_utils
 
+import importlib;
 importlib.reload(datasets_utils);
 
 # %%
@@ -63,7 +76,15 @@ BeijingPM10_X.head(3)
 BeijingPM10_X.tail(3)
 
 # %%
-len(BeijingPM10_X.loc[10, "dim_1"])
+(BeijingPM10_X.loc[10, "dim_1"])
+
+# %%
+type((BeijingPM10_X.loc[10, "dim_1"]))
+
+# %%
+BeijingPM10_X.loc[10, "dim_1"].index
+
+# %%
 
 # %%
 type(BeijingPM10_X.loc[200, "dim_4"])
