@@ -24,14 +24,17 @@ raw_dir = os.path.join(data_base, "00_raw_by_location/")
 # raw_dir = os.path.abspath(raw_dir)
 
 # %%
-
-# %%
 fullName_units = pd.read_csv(data_base + "inputs_column_names.csv")
 fullName_units.head(3)
 fullName_units.rename(columns=lambda x: x.lower().replace(' ', '_'), inplace=True)
+
+
+# %%
+fullName_units
+
+# %%
 fullName_units["variable_name"] = fullName_units["variable_name"].str.lower() + "_" +\
                                   fullName_units["unit"].str.lower()
-
 
 fullName_units["variable_name"] = fullName_units["variable_name"].str.replace(' ', '_')
 fullName_units['variable_name'] = fullName_units['variable_name'].str.replace('maximum', 'max', case=False)
@@ -100,12 +103,25 @@ fullName_units['variable_name'] = fullName_units['variable_name'].str.replace("v
 fullName_units['variable_short'] = fullName_units['variable_short'].str.replace("WDF", 
                                                                                 "WD", case=False)
 
+fullName_units['variable_name'] = fullName_units["variable_name"].str.replace("/", "_", case=False)
+
 fullName_units.head(2)
+
+# %%
+fullName_units
+
+# %%
+fullName_units["variable_name"] == fullName_units["variable_short"]
+
+# %%
 
 # %%
 fullName_units.to_csv(data_base + "inputs_column_names_v1.csv", index=False)
 
 # %%
 fullName_units['variable_short'].str.contains('WDF').sum()
+
+# %%
+fullName_units
 
 # %%
