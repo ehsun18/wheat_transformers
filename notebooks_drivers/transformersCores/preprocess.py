@@ -4,12 +4,137 @@ import transformersCores.config as cfg
 import numpy as np
 
 
+def TS_df_countMonths_prior2Plant(df: pd.DataFrame, months_prior: int) -> pd.DataFrame:
+    """
+    For each location & planting_date, collect numeric columns as pd.Series
+    from `months_prior` months before planting_date (aligned to month start)
+    through harvest_date.
+
+    months_prior says, for example, 3 months before plant date.
+    The difference between this function and TS_df_givenMonth_prior2Plant()
+    is that in this function we say start 3 months prior to plant date,
+    in TS_df_givenMonth_prior2Plant() we say start Oct. of the year prior to lant date
+
+    if plant date is 2002-04-16, then time series would
+    start from 2002-01-01: beginning of 3 months before planting date.
+
+    Arguments:
+    -----------
+    df : pd.DataFrame
+        Must contain 'location', 'date', 'planting_date', 'harvest_date' columns.
+
+    start_month : int
+        Month (1-12) to start the window in the year preceding planting date.
+
+    Returns:
+    --------
+    pd.DataFrame
+        One row per location & planting_date.
+        Columns: location, planting_date, harvest_date, numeric columns...
+        Each numeric column cell contains a pd.Series.
+    """
+
+    df = df.copy()
+    df["date"] = pd.to_datetime(df["date"])
+    df["planting_date"] = pd.to_datetime(df["planting_date"])
+    df["harvest_date"] = pd.to_datetime(df["harvest_date"])
+
+    numeric_cols = df.select_dtypes(include="number").columns.tolist()
+
+    rows = []
+
+    for (loc, planting), group in df.groupby(["location", "planting_date"]):
+        harvest = group["harvest_date"].iloc[0]
+
+        # Compute start date: X months before planting, aligned to month start
+        start = (planting - pd.DateOffset(months=months_prior)).replace(day=1)
+
+        # Filter ALL data for this location
+        loc_data = df[df["location"] == loc]
+        filtered = loc_data[(loc_data["date"] >= start) & (loc_data["date"] <= harvest)]
+
+        series_dict = {col: filtered.set_index("date")[col] for col in numeric_cols}
+
+        series_dict.update(
+            {"location": loc, "planting_date": planting, "harvest_date": harvest}
+        )
+
+        rows.append(series_dict)
+
+    final_df = pd.DataFrame(rows)
+
+    cols_order = ["location", "planting_date", "harvest_date"] + numeric_cols
+    final_df = final_df[cols_order]
+
+    return final_df
+
+
+def TS_df_givenMonth_prior2Plant(
+    df: pd.DataFrame, start_month: int = 10
+) -> pd.DataFrame:
+    """
+    For each location and planting_date, collect all numeric columns
+    in a window from start_month preceding the planting_date until harvest_date.
+    Each cell contains a pd.Series indexed by 'date'.
+
+    Arguments:
+    -----------
+    df : pd.DataFrame
+        Must contain 'location', 'date', 'planting_date', 'harvest_date' columns.
+    start_month : int
+        Month (1-12) to start the window in the year preceding planting date.
+
+    Returns:
+    --------
+    pd.DataFrame
+        One row per location & planting_date.
+        Columns: location, planting_date, harvest_date, numeric columns...
+        Each numeric column cell contains a pd.Series.
+    """
+    df = df.copy()
+    df["date"] = pd.to_datetime(df["date"])
+    df["planting_date"] = pd.to_datetime(df["planting_date"])
+    df["harvest_date"] = pd.to_datetime(df["harvest_date"])
+
+    numeric_cols = df.select_dtypes(include="number").columns.tolist()
+
+    # Prepare a list to collect results
+    rows = []
+
+    # Iterate by location and planting date (but filter from all location's data)
+    for (loc, planting), group in df.groupby(["location", "planting_date"]):
+        harvest = group["harvest_date"].iloc[0]
+        start = pd.Timestamp(year=planting.year - 1, month=start_month, day=1)
+
+        # Filter **all data from the location** in the desired window
+        loc_data = df[df["location"] == loc]
+        filtered = loc_data[(loc_data["date"] >= start) & (loc_data["date"] <= harvest)]
+
+        # Build dictionary of Series per numeric column
+        series_dict = {col: filtered.set_index("date")[col] for col in numeric_cols}
+        series_dict["harvest_date"] = harvest
+
+        # Add location and planting_date
+        series_dict["location"] = loc
+        series_dict["planting_date"] = planting
+
+        rows.append(series_dict)
+
+    # Convert list of dicts into DataFrame
+    final_df = pd.DataFrame(rows)
+
+    # Reorder columns: location, planting_date, harvest_date, numeric columns
+    cols_order = ["location", "planting_date", "harvest_date"] + numeric_cols
+    final_df = final_df[cols_order]
+
+    return final_df
+
+
 def aggregate_per5day(
     params: "cfg.aggregateParameters", daily_df: pd.DataFrame, fiveDay_df: pd.DataFrame
 ) -> pd.DataFrame:
     """Return aggregated variables by converting daily variables to 5-day aggregations
     to match the variables that are recorded evert 5 day
-
 
     Arguments
     ---------
@@ -26,6 +151,9 @@ def aggregate_per5day(
       aggregated daily data to 5-day resolution
 
     """
+    daily_df = daily_df.copy()
+    fiveDay_df = fiveDay_df.copy()
+
     daily_df["date"] = pd.to_datetime(daily_df["date"])
     fiveDay_df["date"] = pd.to_datetime(fiveDay_df["date"])
 
@@ -88,13 +216,11 @@ def aggregate_per5day(
     )
 
     # rename columns to reflect the operation we did:
-    agg_rules = {
-        col: params[col] for col in params if col in daily_converted_2_5day.columns
-    }
+    agg_rules = {col: params[col] for col in params if col in agg_daily_5day.columns}
     rename_dict = {col: f"{agg}_{col}" for col, agg in agg_rules.items()}
 
     # Rename the columns
-    daily_converted_2_5day = daily_converted_2_5day.rename(columns=rename_dict)
+    agg_daily_5day = agg_daily_5day.rename(columns=rename_dict)
 
-    daily_converted_2_5day.rename(columns={"five_day_date": "date"}, inplace=True)
+    agg_daily_5day.rename(columns={"five_day_date": "date"}, inplace=True)
     return agg_daily_5day
