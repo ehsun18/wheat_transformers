@@ -61,7 +61,7 @@ Scenario_1_aggr_cols = {
     "sr_wm2": "mean",
     "vpd_kpa": "mean",
     "wet_day_frequency_days": "mean",
-    "wind_speed_ms": "mean",
+    "wind_speed_ms" : "mean"
 }
 
 Scenario_1_meta_data = {
