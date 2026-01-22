@@ -9,6 +9,8 @@ from itertools import repeat, chain
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+# packages to read pickle files
+import pickle
 
 # The following line was replaced by the next 2 lines
 # Python package stuff.
@@ -331,18 +333,37 @@ class TSRegressionArchive(BaseData):
         else:
             selected_paths = list(filter(lambda x: re.search(pattern, x), data_paths))
 
+        # input_paths = [
+        #     p for p in selected_paths if os.path.isfile(p) and p.endswith(".ts")
+        # ]
+        # if len(input_paths) == 0:
+        #     raise Exception("No .ts files found using pattern: '{}'".format(pattern))
+
+        # all_df, labels_df = self.load_single(
+        #     input_paths[0]
+        # )  # a single file contains dataset
+
+        # return all_df, labels_df
+
+        ###################################
+        ### Ehsan edit for pickle files ###
+        ###################################
         input_paths = [
-            p for p in selected_paths if os.path.isfile(p) and p.endswith(".ts")
+            p for p in selected_paths if os.path.isfile(p) and p.endswith(".pkl")
         ]
         if len(input_paths) == 0:
-            raise Exception("No .ts files found using pattern: '{}'".format(pattern))
+            raise Exception("No .pkl files found using pattern: '{}'".format(pattern))
 
-        all_df, labels_df = self.load_single(
-            input_paths[0]
-        )  # a single file contains dataset
+        # Expect exactly ONE pickle file
+        with open(input_paths[0], "rb") as f:
+            data = pickle.load(f)
+
+        # REQUIRED keys in pickle
+        all_df = data["all_df"]        # DataFrame indexed by sample ID
+        labels_df = data["labels_df"]  # DataFrame (num_samples, num_targets)
 
         return all_df, labels_df
-
+    
     def load_single(self, filepath):
         # Every row of the returned df corresponds to a sample;
         # every column is a pd.Series indexed by timestamp and corresponds to a different dimension (feature)
